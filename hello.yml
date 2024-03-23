@@ -1,6 +1,8 @@
+# playbook.yml
+
 # First Play
 - name: Play - Handle Files in all hosts
-  hosts: all
+  hosts: app_group
   tasks:
   - name: all host are identified with a file
     copy:
@@ -49,3 +51,61 @@
     command: forever start /node-app/app.js
     when: "forever_list.stdout.find('/node-app/app.js') == -1"
 
+
+# Uninstall Nginx
+# - name: Play - Uninstall Nginx
+#   hosts: loadbalancer
+#   become: yes
+#   tasks: 
+#     - name: Unnstall Nginx
+#       apt: name=nginx state=absent
+
+# #load-balancer play
+- name: Install and configure Nginx as a LoadBalancer
+  hosts: loadbalancer
+  become: true
+  tasks:
+    - name: Update cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: latest
+      when: ansible_os_family == "Debian"
+
+    - name: Stop Nginx
+      service:
+        name: nginx
+        state: stopped
+
+    - name: Copy the Nginx config file to /etc/nginx/sites-available
+      copy:
+        src: ./load_balancer/nginx.cfg
+        dest: /etc/nginx/sites-available/load-balancer.cfg
+      notify: restart nginx
+
+    - name: Create symlink of the config file at /etc/nginx/sites-enabled
+      file:
+        src: /etc/nginx/sites-available/load-balancer.cfg
+        dest: /etc/nginx/sites-enabled/default
+        state: link
+      notify: restart nginx
+
+    - name: Check Nginx configuration
+      command: nginx -t
+      register: nginx_config_test
+      changed_when: false
+
+    - name: Restart nginx for changes
+      service:
+        name: nginx
+        state: restarted
+        
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted

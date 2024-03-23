@@ -1,24 +1,53 @@
+# docker-compose.yml
 version: "3.7"
 
 services:
   managedhost-app-1:
-    build: 
+    build:
       context: managed-host/alpine/app1
     restart: unless-stopped
     network_mode: "bridge"
     environment:
       - SSH_ENABLE_ROOT=true
+    volumes:
+      - ./secrets/id_rsa.pub:/root/.ssh/authorized_keys
+    ports:
+      - "3000:3000" # Map Container port 3000 to Host port 3000 (Web)
+      - "2223:2223" # Map Container port 2223 to Host port 2223 (SSH)
+
   managedhost-app-2:
-    build: 
+    build:
       context: managed-host/alpine/app2
     restart: unless-stopped
     network_mode: "bridge"
     environment:
       - SSH_ENABLE_ROOT=true
+    volumes:
+      - ./secrets/id_rsa.pub:/root/.ssh/authorized_keys
+    ports:
+      - "3001:3000" # Map Container port 3000 to Host port 3001 (Web)
+      - "2224:2224" # Map Container port 2224 to Host port 2224 (SSH)
+
   managedhost-app-3:
-    build: 
+    build:
       context: managed-host/alpine/app3
     restart: unless-stopped
     network_mode: "bridge"
     environment:
       - SSH_ENABLE_ROOT=true
+    volumes:
+      - ./secrets/id_rsa.pub:/root/.ssh/authorized_keys
+    ports:
+      - "3002:3000" # Map Container port 3000 to Host port 3002 (Web)
+      - "2225:2225" # Map Container port 2225 to Host port 2225 (SSH)
+
+  loadbalancer:
+    build:
+      context: load_balancer
+    ports:
+      - "80:80"
+    depends_on:
+      - managedhost-app-1
+      - managedhost-app-2
+      - managedhost-app-3
+      
